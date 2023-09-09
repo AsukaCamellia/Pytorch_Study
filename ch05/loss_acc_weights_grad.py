@@ -6,6 +6,7 @@ from torch.utils.tensorboard import SummaryWriter
 import torch.optim as optim
 import matplotlib.pyplot as plt
 import os,sys
+import numpy as np
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
 work_dir = os.path.dirname(base_dir)
@@ -17,7 +18,7 @@ from tools.my_dataset import RMBdataset
 
 set_seed(3407)
 
-batch_size = 8
+batch_size = 16
 lr = 0.01
 max_epoch = 10
 
@@ -47,7 +48,7 @@ valid_data = RMBdataset(valid_dir,valid_transform)
 
 #构建dataloader
 train_loader = DataLoader(train_data,batch_size=batch_size,shuffle=True)
-valid_data = DataLoader(valid_data,batch_size=batch_size)
+valid_loader = DataLoader(valid_data,batch_size=batch_size)
 
 net = LeNet(classes=2)
 net.initialize_weights()
@@ -59,8 +60,12 @@ scheduler =optim.lr_scheduler.StepLR(optimizer,step_size=10,gamma=0.1)
 
 train_curve = list()
 valid_curve = list()
+iter_count = 0
 
 for epoch in range(max_epoch):
+
+
+    net.train()
 
     for i,data in enumerate(train_loader):
 
@@ -79,7 +84,46 @@ for epoch in range(max_epoch):
         _,predict = torch.max(outputs.data,1)
 
         correct = (predict == labels).squeeze().sum().numpy()
-        acc = correct/labels.size()
+        acc = correct/labels.size(0)
 
-        print(epoch,'  ',i,'  ',loss.item(),'  ',acc)
+        train_curve.append(loss.item())
+        iter_count +=1
+
+    scheduler.step()
+
+
+
+    loss_val = 0
+    net.eval()
+    with torch.no_grad():
+        for j,data in enumerate(valid_loader):
+            inputs,labels = data
+            outputs = net(inputs)
+
+            loss = criterion(outputs,labels)
+
+            _,predicts = torch.max(outputs.data,1)
+
+            correct = (predicts == labels).squeeze().sum().numpy()
+            acc = correct / labels.size()
+            valid_curve.append(loss.item())
+
+
+
+
+print(len(train_loader),len(valid_loader))
+
+
+iter_count = range(iter_count)
+plt.plot(iter_count,train_curve,label = 'train')
+
+val_x = np.arange(1,len(valid_curve)+1)*(len(train_loader)/len(valid_loader))-1
+plt.plot(val_x,valid_curve,label = 'valid')
+plt.legend()
+plt.show()
+
+# print(len(valid_curve))
+
+
+
 
