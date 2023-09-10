@@ -61,6 +61,8 @@ scheduler =optim.lr_scheduler.StepLR(optimizer,step_size=10,gamma=0.1)
 train_curve = list()
 valid_curve = list()
 iter_count = 0
+valid_iter_count = 0
+writer = SummaryWriter(comment='__lenet__',filename_suffix='__lenetfile__')
 
 for epoch in range(max_epoch):
 
@@ -69,6 +71,7 @@ for epoch in range(max_epoch):
 
     for i,data in enumerate(train_loader):
 
+        iter_count +=1
         #forward
         inputs,labels = data
         outputs = net(inputs)
@@ -87,8 +90,16 @@ for epoch in range(max_epoch):
         acc = correct/labels.size(0)
 
         train_curve.append(loss.item())
-        iter_count +=1
 
+        writer.add_scalars('loss',{'train':loss.item()},iter_count)
+        writer.add_scalars('acc',{'train':acc},iter_count)
+
+    for name,param in net.named_parameters():
+        writer.add_histogram(name+'_grad',param.grad,epoch)
+        writer.add_histogram(name+'_data',param.data,epoch)
+
+
+    #每一次epoch之后进行学习率的调整 
     scheduler.step()
 
 
@@ -97,6 +108,7 @@ for epoch in range(max_epoch):
     net.eval()
     with torch.no_grad():
         for j,data in enumerate(valid_loader):
+            valid_iter_count +=1
             inputs,labels = data
             outputs = net(inputs)
 
@@ -107,12 +119,11 @@ for epoch in range(max_epoch):
             correct = (predicts == labels).squeeze().sum().numpy()
             acc = correct / labels.size()
             valid_curve.append(loss.item())
+            writer.add_scalars('loss',{'valid':loss.item()},valid_iter_count*5)
+            writer.add_scalars('acc',{'valid':acc},valid_iter_count*5)
 
 
-
-
-print(len(train_loader),len(valid_loader))
-
+writer.close()
 
 iter_count = range(iter_count)
 plt.plot(iter_count,train_curve,label = 'train')
@@ -121,9 +132,6 @@ val_x = np.arange(1,len(valid_curve)+1)*(len(train_loader)/len(valid_loader))-1
 plt.plot(val_x,valid_curve,label = 'valid')
 plt.legend()
 plt.show()
-
-# print(len(valid_curve))
-
 
 
 
