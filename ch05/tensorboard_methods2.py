@@ -10,7 +10,9 @@ work_dir = os.path.dirname(base_dir)
 sys.path.append(work_dir)
 from tools.common_tools import set_seed
 from tools.my_dataset import RMBdataset 
+from model.lenet import LeNet
 import torchvision.models as models
+from PIL import Image
 data_dir = os.path.join(work_dir,'data','RMB_split_new')
 train_dir = os.path.join(data_dir,'train')
 
@@ -70,35 +72,89 @@ if flag:
     writer.close()
 
 #---------------kernel vis
-# flag = 0 
-flag = 1
+flag = 0 
+# flag = 1
 if flag:
-    writer = SummaryWriter(comment='__kernel__vis')
+    writer = SummaryWriter(comment='__kernel__vis__')
 
-    alexnet = models.alexnet(pretrained = True)
+    net = models.alexnet(pretrained = True)
 
-    kernel_num = -1
-    vis_max = 1
+    layer_num = -1
+    vis_maxnum = 1
 
-    with torch.no_grad():
-        for sub_model in alexnet.modules():
-            if isinstance(sub_model,nn.Conv2d):
-                kernel_num += 1
-                if kernel_num > vis_max:
-                    break
-                kernels = sub_model.weight
+    for sub_model in net.modules():
+        if isinstance(sub_model,nn.Conv2d):
+            layer_num += 1
+            if layer_num>vis_maxnum:
+                break
+            kernels = sub_model.weight
 
-                c_out,c_int,k_w,k_h = tuple(kernels.shape)
+            #c_out实际上就是这一层卷积核的个数
+            c_out,c_int,k_h,k_w = tuple(kernels.shape)
 
-                for i_out in range(c_out):
-                    kernel_idx = kernels[i_out,:,:,:].unsqueeze(1)
-                    kernel_grid = torchvision.utils.make_grid(kernel_idx,nrow=c_int,normalize=True,scale_each=True)
-                    name = '__convlayer__split_in_channel'.format(kernel_num)
-                    writer.add_image(name,kernel_grid,global_step=i_out)
+            for i in range(c_out):
+                kernels_1d = kernels[i,:,:,:].unsqueeze(1)
+                kernel_grid = torchvision.utils.make_grid(kernels_1d,nrow=c_int,normalize=True,scale_each=True)
+                writer.add_image('{}__convlayer__kernel_split_in_channel'.format(layer_num),kernel_grid,global_step=i)
 
-                kernel_all = kernels.view(-1,3,k_h,k_w)
-                kernel_all_grid = torchvision.utils.make_grid(kernel_all,nrow=8,normalize=True,scale_each=True)
-                writer.add_image('__convalyer__'.format(kernel_num),kernel_all_grid,global_step=332)
 
-        writer.close()
-        
+            kernels_all = kernels.view(-1,3,k_h,k_w)
+            kernels_all_grid = torchvision.utils.make_grid(kernels_all,nrow=8,normalize=True,scale_each=True)
+            writer.add_image('{}__convlayer_kernel'.format(layer_num),kernels_all_grid,global_step=layer_num)
+
+            print(kernels.shape)
+
+    writer.close()
+
+
+flag = 0
+# flag = 1
+if flag:
+    writer = SummaryWriter(comment='__feature__map__vis')
+
+    img_path = os.path.join(base_dir,'lena.png')
+
+    normMean = [0.49139968, 0.48215827, 0.44653124]
+    normStd = [0.24703233, 0.24348505, 0.26158768]
+
+    img_transform = transforms.Compose([
+        transforms.Resize((224,224)),
+        transforms.ToTensor(),
+        transforms.Normalize(normMean,normStd)
+    ])
+
+    img_pil = Image.open(img_path).convert('RGB')
+
+    if img_transform is not None:
+        img_tensor = img_transform(img_pil)
+
+    img_tensor = img_tensor.unsqueeze(0)
+
+    net = models.alexnet(pretrained = True)
+
+    convlayer1 = net.features[0]
+
+    feature_map1 = convlayer1(img_tensor)
+
+    feature_map1.transpose_(0,1)
+
+    fea_map_grid = torchvision.utils.make_grid(feature_map1,nrow=8,normalize=True,scale_each=True)
+
+    writer.add_image('__feature__map',fea_map_grid,global_step=0)
+
+    writer.close()
+
+# flag = 0
+flag = 1
+
+if flag:
+
+    writer = SummaryWriter(comment='__graph__vis__')
+
+    lenet = LeNet(classes=2)
+
+    fake_img = torch.randn((1,3,32,32))
+
+    writer.add_graph(lenet,fake_img)
+
+    writer.close()
