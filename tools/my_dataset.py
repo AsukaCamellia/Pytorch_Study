@@ -42,3 +42,5 @@ class RMBdataset(Dataset):
                     data_info.append((img_path,int(label)))
 
         return data_info
+    
+

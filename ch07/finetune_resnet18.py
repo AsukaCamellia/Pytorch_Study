@@ -17,7 +17,7 @@ from model.lenet import LeNet
 
 
 set_seed(3407)
-
+classes = 2
 #----------------------------------------
 
 
@@ -34,14 +34,14 @@ train_dir = os.path.join(data_dir,'train')
 valid_dir = os.path.join(data_dir,'valid')
 
 train_transform = transforms.Compose([
-    transforms.Resize((32,32)),
-    transforms.RandomCrop(32,padding=4),
+    transforms.Resize((224,224)),
+    transforms.RandomCrop(224,padding=4),
     transforms.ToTensor(),
     transforms.Normalize(mean=norm_mean,std=norm_std)
 ])
 
 valid_transform = transforms.Compose([
-    transforms.Resize((32,32)),
+    transforms.Resize((224,224)),
     transforms.ToTensor(),
     transforms.Normalize(mean=norm_mean,std=norm_std)
 ])
@@ -54,6 +54,9 @@ valid_loader = DataLoader(valid_set,batch_size=batch_size)
 
 #------------------------------
 net = models.resnet18()
+
+num_ftrs = net.fc.in_features
+net.fc = nn.Linear(num_ftrs,classes)
 
 
 
@@ -71,7 +74,7 @@ scheduler = optim.lr_scheduler.StepLR(optimizer,step_size=10,gamma=1)
 iter_train = 0
 iter_valid = 0
 
-writer = SummaryWriter(comment='__train__interrupt__checkpoint__')
+# writer = SummaryWriter(comment='__train__interrupt__checkpoint__')
 
 
 for epoch in range(max_epoch):
@@ -97,29 +100,30 @@ for epoch in range(max_epoch):
         correct = (predicts == labels).squeeze().sum().numpy()
         acc_train = correct/labels.size(0)
 
-        writer.add_scalars('loss',{'train_loss':loss_train.item()},global_step=iter_train)
-        writer.add_scalars('acc',{'train_acc':acc_train},global_step=iter_train)
+        print('epoch : {}  iter : {}  loss : {}  acc : {}'.format(epoch,iter_train,loss_train.item(),acc_train))
+        # writer.add_scalars('loss',{'train_loss':loss_train.item()},global_step=iter_train)
+        # writer.add_scalars('acc',{'train_acc':acc_train},global_step=iter_train)
 
     scheduler.step()
 
 
-    if(epoch+1)%checkpoint_epoch == 0:
-        checkpoint = {
-            'model_state_dict':net.state_dict(),
-            'optimizer_state_dict':optimizer.state_dict(),
-            'epoch':epoch,
-            'iter_train':iter_train,
-            'iter_valid':iter_valid
-        }
+    # if(epoch+1)%checkpoint_epoch == 0:
+    #     checkpoint = {
+    #         'model_state_dict':net.state_dict(),
+    #         'optimizer_state_dict':optimizer.state_dict(),
+    #         'epoch':epoch,
+    #         'iter_train':iter_train,
+    #         'iter_valid':iter_valid
+    #     }
 
-        checkpoint_path = './checkpoint__{}__epoch.pkl'.format(epoch)
+    #     checkpoint_path = './checkpoint__{}__epoch.pkl'.format(epoch)
 
-        torch.save(checkpoint,checkpoint_path)
+    #     torch.save(checkpoint,checkpoint_path)
 
 
-    if epoch>5:
-        print('训练意外中断！！')
-        break
+    # if epoch>5:
+    #     print('训练意外中断！！')
+    #     break
 
     loss_valid = 0.
     acc_valid = 0.
@@ -141,7 +145,8 @@ for epoch in range(max_epoch):
 
             acc_valid = correct/labels.size()
 
-            writer.add_scalars('loss',{'valid_loss':loss_valid.item()},global_step=iter_valid*5)
-            writer.add_scalars('acc',{'valid_acc':acc_valid},global_step=iter_valid*5)
+            print('epoch : {}  iter : {}  loss : {}  acc : {}'.format(epoch,iter_valid,loss_valid.item(),acc_valid))
+#             writer.add_scalars('loss',{'valid_loss':loss_valid.item()},global_step=iter_valid*5)
+#             writer.add_scalars('acc',{'valid_acc':acc_valid},global_step=iter_valid*5)
 
-writer.close()
+# writer.close()
