@@ -28,7 +28,7 @@ lr = 0.01
 norm_mean = [0.485,0.456,0.406]
 norm_std = [0.229,0.224,0.225]
 
-data_dir = os.path.join(work_dir,'data','RMB_split_new')
+data_dir = os.path.join(work_dir,'data','RMB_Split')
 train_dir = os.path.join(data_dir,'train')
 valid_dir = os.path.join(data_dir,'valid')
 
